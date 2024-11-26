@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./static/styles.css" />
+    <title>Chat Room</title>
+</head>
+<body>
+    <h2 id="welcomeMessage">Welcome to the Chat Room</h2>
+
+    <!-- Username Modal -->
+    <div id="usernameForm">
+        <label for="username">Enter your name to join the chat:</label>
+        <input type="text" id="username" placeholder="Your username" />
+        <button onclick="joinChat()">Join Chat</button>
+    </div>
+
+    <!-- Chat Room -->
+    <div id="chatRoom">
+        <div id="messages"></div>
+        <input type="text" id="message" placeholder="Type a message" />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        let username;
+        let ws;
+
+        // Reset the username input field when the page loads
+        window.onload = function() {
+            document.getElementById('username').value = '';
+        };
+
+        function joinChat() {
+            username = document.getElementById('username').value.trim();
+            if (username) {
+                document.getElementById('welcomeMessage').innerText = `Welcome, ${username}!`;
+
+                // Hide the username form and show the chat room
+                document.getElementById('usernameForm').style.display = 'none';
+                document.getElementById('chatRoom').style.display = 'block';
+
+                ws = new WebSocket('ws://localhost:8080/ws');
+                
+                ws.onopen = function() {
+                    // Send the username to the server when connection opens
+                    ws.send(JSON.stringify(username));
+                };
+
+                // Listen for messages from the server
+                ws.onmessage = function(event) {
+                    const msg = JSON.parse(event.data);
+                    const messageElement = document.createElement('div');
+
+                    if (msg.username === username) {
+                        // Message sent by the current user
+                        messageElement.innerText = msg.message; // No username
+                        messageElement.style.textAlign = 'right'; // Align to the right
+                    } else {
+                        // Message from another user
+                        messageElement.innerHTML = `<strong>${msg.username}:</strong> ${msg.message}`;
+                    }
+
+                    document.getElementById('messages').appendChild(messageElement);
+                };
+
+                ws.onerror = function(error) {
+                    console.log('WebSocket Error:', error);
+                };
+            } else {
+                alert("Please enter your name!");
+            }
+        }
+
+        // Send message function
+        function sendMessage() {
+            const message = document.getElementById('message').value.trim();
+            if (message && ws) {
+                // Send the message to the WebSocket server
+                ws.send(JSON.stringify({ username: username, message: message }));
+                document.getElementById('message').value = '';
+            }
+        }
+    </script>
+</body>
+</html>
